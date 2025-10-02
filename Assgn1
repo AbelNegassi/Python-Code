@@ -1,0 +1,145 @@
+# 1.) Given two numpy vectors of length p, first check their type.
+# Assume same type for all p components of the two vectors.
+import numpy as np 
+p = 10
+v1= np.random.randint(0,10,p)
+v2 = np.random.randint(0,10,p)
+print(v1)
+print(v2)
+# Assume the same type for all p components
+# Type is Numeric for both vectors
+# Implement all measures for later
+
+def minkowski_distance(data, h=2):
+    data = np.array(data,dtype=float)
+    diff = data[:,None,:] - data[None,:,:]
+    if h == np.inf:
+        return np.abs(diff.max(axis=2)) 
+    return (np.abs(diff)**h).sum(axis=2) ** (1/h)
+
+#Nominal 
+def nominal_distance(data):
+    data = np.array(data)
+    diff = data[:, None, :] != data[None, :, :]
+    return diff.mean(axis=2).astype(float)
+
+#Binary
+def binary_distance(data):
+    data = np.array(data,dtype=int)
+    return (data[:,None,:] != data[None,:,:]).sum(axis=2)
+
+#Ordinal
+def ordinal_distance(data,rank):
+    scale = data/(rank-1)
+    return np.abs(scale[:,None,:] - scale[None,:,:]).sum(axis=2)
+# Implement Minkowski distance
+
+d1 = minkowski_distance((v1,v2),2)
+
+print(f"Distance 1: {d1}")
+
+# 2.) Lift measures to distance between K objects
+# The input is a numpy array containing K rows and N columns.
+# Compute pairwise distances and place them into a single distance matrix
+K = 4
+N = 10
+inp = np.random.randint(0,10,(K,N))
+print(inp)
+#Implement Manhattan Distance again
+d2 = minkowski_distance(inp)
+print(f'Distance 2: {d2}')
+
+# 3.) Provide testing procedures for Q2's solution
+
+#Nominal Test
+nominal_data = np.array([
+    ["Black","White","Blue","Black","White","Blue","Black","White","Blue","Black"]
+    ,["Blue","White","Black","Blue","Blue","Black","Black","Blue","Black","Black"]
+    ,["White","Blue","White","White","Black","Blue","Blue","Black","White","Black"]
+])
+nominal_dtest = nominal_distance(nominal_data)
+print(f'Nominal Distance:\n {nominal_dtest}')
+
+#Ordinal Test
+ordinal_data = np.array([
+    [3,10,8,9,2,1,5,6,7,3]
+    ,[9,2,1,3,6,4,5,7,10,8]
+])
+ordinal_dtest= ordinal_distance(ordinal_data,10)
+print(f'Ordinal Distance:\n  {ordinal_dtest}')
+
+#Binary Test
+binary_data = np.array([
+    [1,0,0,0,1,1,0,1,0,1],
+    [0,0,1,1,0,1,1,1,1,0],
+    [1,0,0,1,1,0,0,0,0,1]
+])
+binary_dtest = binary_distance(binary_data)
+print(f'Binary Distance:\n {binary_dtest}')
+
+#Minkowski Test with h = inf
+minkowski_data = np.array([
+    [12,23,64,1,54,24,29,10,4,74],
+    [2,21,24,29,42,34,55,67,33,46],
+    [65,56,34,75,12,3,37,58,29,25]
+])
+minkowski_dtest = minkowski_distance(minkowski_data,np.inf)
+print(f'Minkowski Distance with h = inf:\n {minkowski_dtest}')
+
+# 4.) Implement Q2 with mixed types
+def mixed_distance_matrix(data,types,ranks = None):
+     data = np.array(data,dtype=object)
+     K,N = data.shape
+
+     if ranks is None:
+        ranks = None* N # for no ordinals
+    
+# Prepare list to append distance matrices to later
+     matrix_list = []
+# Numeric 
+     num_part = np.array([t == "numeric" for t in types])
+     if num_part.any():
+         num_data = data[:, num_part].astype(float)
+         rnk = np.ptp(num_data, axis=0)    # ranks per column
+         rnk[rnk == 0] = 1                 # to avoid division by zero
+         diff = (np.abs(num_data[:, None,:] - num_data[None, :,:]/ rnk))
+         matrix_list.append(diff)
+# Binary
+     bin_part = np.array([t == "binary" for t in types])
+     if bin_part.any():
+         bin_data = data[:,bin_part].astype(float)
+         diff = (bin_data[:,None,:] != bin_data[None,:,:]).sum(axis=2)
+         matrix_list.append(diff)
+# Nominal
+     nom_part = np.array([t == "nominal" for t in types])
+     if nom_part.any():
+         nom_data = data[:,nom_part]
+         diff = (nom_data[:,None,:] != nom_data[None,:,:]).sum(axis=2)
+         matrix_list.append(diff.astype(float))
+# Ordinal
+     ord_part = np.array([t == "ordinal" for t in types])
+     if ord_part.any():
+         ord_data = data[:,ord_part].astype(float)
+         max_ranks = np.array([r for t,r in zip(types, ranks) if t=="ordinal"])
+         scale = ord_data / (max_ranks - 1)
+         diff = np.abs(scale[:, None, :] - scale[None, :, :])
+         matrix_list.append(diff)
+
+    # Combine and average over all attributes
+     all_diffs = np.concatenate(matrix_list, axis=2)  
+     return all_diffs.mean(axis=2)
+
+#Testing 
+mixed_data = np.array([
+    [12,0,"Male",5], #Numeric, Binary, Nominal, Ordinal
+    [3,1,"Female",2],
+    [10,0,"Male",1]
+], dtype = object)
+
+mixed_dtest = mixed_distance_matrix(mixed_data,["numeric","binary","nominal","ordinal",],[None,None,None,5])
+
+
+
+        
+
+         
